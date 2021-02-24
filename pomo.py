@@ -83,7 +83,10 @@ while counting == True:
 
     # get session rating if not provided or not valid
     while len(sessionRating) != 3 or not sessionRating.isdecimal() or not all(x in ['1', '2', '3', '4', '5'] for x in sessionRating):
-        sessionRating = input('please record focus, tired and mood levels (1-5): ') # TODO: add optional comment
+        sessionRatingOptionalComment = input('please record focus, tired and mood levels (1-5) and optional comment: ')
+        sessionRating = sessionRatingOptionalComment[:3]
+        if len(sessionRatingOptionalComment) > 3:
+            userComment =  sessionRatingOptionalComment[3:]
     
     # addd session Rating to pom session data
     currentPomData.update({'focus': sessionRating[0], 'tired': sessionRating[1], 'mood': sessionRating[2]})
