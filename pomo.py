@@ -2,6 +2,7 @@
 
 import time, datetime, sys, csv, os
 from pathlib import Path
+import simpleaudio
 
 # if run in test mode, set focus time as 2 seconds, break time as 5 seconds
 focusTime = 25
@@ -40,6 +41,9 @@ dataBuffer = []
 # start program
 input('Ciao, world! Welcome to Pomodomodata, a pomodoro app. Press enter to begin first pomodoro.')
 counting = True
+# get sound path
+sound = os.listdir('useSound')[0]
+soundPath = str(Path('useSound')/sound)
 
 while counting == True:
     currentPom += 1
@@ -51,8 +55,11 @@ while counting == True:
     # after 25 minutes
     while datetime.datetime.now() - pomStartTime < datetime.timedelta(minutes=focusTime, seconds=testFocusTime):
         time.sleep(1)
-    # pom session complete
+    # pom session complete 
+    wave_obj = simpleaudio.WaveObject.from_wave_file(soundPath)
+    wave_obj.play()
     pomsComplete += 1
+
     print(f'Poms completed: {pomsComplete}')
     pomEndTime = datetime.datetime.now()
     currentPomData['pomEndDatetime'] = pomEndTime
