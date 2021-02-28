@@ -15,7 +15,7 @@ testFocusTime = 0
 testNormalBreakTime = 0
 testLongBreakTime = 0
 pomsToLongBreak = 6 # number of poms between long breaks is 6 by default
-pomTarget = 99 # target number of pomodors for the day
+pomTarget = None # target number of pomodors for the day
 pomsCompleteToday = 0 # total complete on day program runs, including previous sessions that day
 
 # get previous sessions settings if no settings given in command line and not run in default mode
@@ -30,7 +30,7 @@ pomsCompleteToday = prevPomSettings['pomsCompleteToday']
 if sessionDate != str(datetime.datetime.today().strftime('%Y-%m-%d')):
     pomsCompleteToday = 0
 
-# TODO add an options mode, -o, where user can respond to prompts to enter settings
+# add an options mode, -o, where user can respond to prompts to enter settings
 if '-o' in sys.argv:
     print('Enter your preferred settings (focus and break times in minutes)')
     focusTime = pyip.inputInt(prompt="Focus time: ", min=1)
@@ -38,6 +38,11 @@ if '-o' in sys.argv:
     longBreakTime = pyip.inputInt(prompt="Long break time: ", min=1)
     pomsToLongBreak = pyip.inputInt(prompt="Sessions to long break: ", min=1)
     pomTarget = pyip.inputInt(prompt="Enter target number of poms (leave blank for no target): ", min=1, blank=True)
+    if pomTarget == '':
+        pomTarget = None
+
+if pomTarget != None:
+    pomsTilTarget = pomTarget - pomsCompleteToday
 
 
 #TODO check if any settings specified in the command line, eg for focus/break times
@@ -61,7 +66,7 @@ currentPomSettings = {
 
 # check if run in test mode for short focus and break sessions for convenient testing
 testMode = False
-if 'testm' in sys.argv:
+if 'test' in sys.argv:
     testMode = True
 
 # if run in test mode, set focus time as 2 seconds, break time as 5 seconds
@@ -77,6 +82,9 @@ if testMode:
 sound = os.listdir('useEndSound')[0]
 soundPath = str(Path('useEndSound')/sound)
 wave_obj = simpleaudio.WaveObject.from_wave_file(soundPath)
+
+# motivational messages
+motivations = ['Forza!', 'Ce la fai!', 'Coraggio!']
 
 # if the first time running the program, create a new csv with headers to store data
 p = Path('myPomoData.csv')
@@ -103,11 +111,11 @@ dataBuffer = []
 
 # start up display
 print(f'\n')
-print('  PomodomoData  '.center(85, '_'))
+print('  PomodomoData  '.center(80, '_'))
 print(f'\n')
-print(f'Ciao, world! Welcome to PomodomoData, a Pomodoro app.\n'.ljust(85, ' '))
+print(f'Ciao, world! Welcome to PomodomoData, a Pomodoro app.\n'.ljust(80, ' '))
 print('------'.center(85, ' ') + '\n')
-print(f'PomodomoData allows you to track your productivity, focus, tiredness, and mood levels.\n'.ljust(85))
+print(f'PomodomoData allows you to track your productivity, focus, tiredness, and mood levels.\n'.ljust(80))
 print(f'''After each focus session enter: q to quit or s to skip break (optional)
 ... ### for focus, tired and mood levels (1-5)...
 ... and a comment on your pom session (optional).
@@ -115,7 +123,7 @@ print(f'''After each focus session enter: q to quit or s to skip break (optional
 For example, "554 completed report plan" or, "q 353 time for bed".
 
 Press ctrl-C to save your progress and quit the app at any time.\n''')
-print('------'.center(85, ' ') + '\n')
+print('------'.center(80, ' ') + '\n')
 
 # -------------------POMODOROS START HERE ON USER INPUT----------------
 # start pomodoros on user input
@@ -126,7 +134,7 @@ try:
         pomStartTime = datetime.datetime.now()
         currentPomData={'pomSession':currentPom}
         currentPomData['pomStartDatetime'] = pomStartTime.strftime('%Y-%m-%d %H:%M:%S')
-        print(f"Pom start time: {pomStartTime.strftime('%a, %d %b %Y: %H:%M:%S')}  ".ljust(45, '.') +  f"  Focus until: {(pomStartTime + datetime.timedelta(minutes=focusTime, seconds=testFocusTime)).strftime('%H:%M:%S')}".rjust(40, '.'))
+        print(f"Pom start time: {pomStartTime.strftime('%a, %d %b %Y: %H:%M:%S')}  ".ljust(40, '.') +  f"  Focus until: {(pomStartTime + datetime.timedelta(minutes=focusTime, seconds=testFocusTime)).strftime('%H:%M:%S')}".rjust(40, '.'))
         print(f'Current pom: {currentPom}\n')
         
         # set break time depending on if long break or regular
@@ -143,10 +151,20 @@ try:
         # pom session complete, play notification sound
         wave_obj.play()
         sessionPomsComplete += 1
+        pomsCompleteToday += 1
+        pomsTilTarget -= 1
 
         pomEndTime = datetime.datetime.now()
         currentPomData['pomEndDatetime'] = pomEndTime.strftime('%Y-%m-%d %H:%M:%S')
         print(f"Pom #{sessionPomsComplete} complete - {pomEndTime.strftime('%a, %d %b %Y: %H:%M:%S')} - {breakTime} minute break until {(pomEndTime + datetime.timedelta(minutes=breakTime, seconds=testBreakTime)).strftime('%H:%M:%S')}")
+        # update on progress towards pom target, if halfway, or closer to target
+        if pomTarget != None:
+            if pomTarget / pomsCompleteToday == 2:
+                print(f"You're halfway to your goal of {pomTarget} poms - Non mollare!")
+            elif 0 < pomsTilTarget <= 3:
+                print(f"You're only {pomsTilTarget} poms away from your goal today - {motivations[pomsTilTarget -1]}")
+            elif pomTarget == pomsCompleteToday:
+                print(f'Goal of {pomTarget} poms achieved - Bravissimo!')
         # get user reflection on session and choice to continue or quit
         userInput = ''
         while len(userInput.split(' ')) < 1 or userInput == '': 
@@ -206,7 +224,7 @@ except KeyboardInterrupt:
         pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
         for pom in dataBuffer:
             pomDictWriter.writerow(pom)
-    # TODO update previous session settings
+    # update previous session settings
     with open('previousSessionSettings.py', 'w') as settingsFileObj:
         settingsFileObj.write('prevPomSettings = ' + pprint.pformat(currentPomSettings))
 
@@ -218,7 +236,9 @@ with open('myPomoData.csv', 'a') as pomDataCSV:
     for pom in dataBuffer:
         pomDictWriter.writerow(pom)
 
-# TODO update previous session settings
+# update previous session settings
+with open('previousSessionSettings.py', 'w') as settingsFileObj:
+    settingsFileObj.write('prevPomSettings = ' + pprint.pformat(currentPomSettings))
 
 
 print('Good job! See you soon.')
