@@ -1,10 +1,13 @@
 # pomo.py - Pomodomodata: a super-simple, textual pomodoro app that records usage data to enable time tracking
 
-import time, datetime, sys, csv, os
+import time, datetime, sys, csv, os, pprint
 from pathlib import Path
 import simpleaudio
+from previousSessionSettings import prevPomSettings
+import pyinputplus as pyip
 
-# default settings
+# TODO: check if run in default mode with the below default settings, eg. -d in command line
+#  default settings
 focusTime = 25
 normalBreakTime = 5
 longBreakTime = 25
@@ -12,24 +15,63 @@ testFocusTime = 0
 testNormalBreakTime = 0
 testLongBreakTime = 0
 pomsToLongBreak = 6 # number of poms between long breaks is 6 by default
+pomTarget = 99 # target number of pomodors for the day
+pomsCompleteToday = 0 # total complete on day program runs, including previous sessions that day
+
+# get previous sessions settings if no settings given in command line and not run in default mode
+focusTime = prevPomSettings['focusTime']
+normalBreakTime = prevPomSettings['normalBreakTime']
+longBreakTime = prevPomSettings['longBreakTime']
+pomsToLongBreak = prevPomSettings['pomsToLongBreak']
+pomTarget = prevPomSettings['pomTarget']
+sessionDate = prevPomSettings['date']
+pomsCompleteToday = prevPomSettings['pomsCompleteToday']
+# if previous session was on an earlier date, reset pomsCompleteToday
+if sessionDate != str(datetime.datetime.today().strftime('%Y-%m-%d')):
+    pomsCompleteToday = 0
+
+# TODO add an options mode, -o, where user can respond to prompts to enter settings
+if '-o' in sys.argv:
+    print('Enter your preferred settings (focus and break times in minutes)')
+    focusTime = pyip.inputInt(prompt="Focus time: ", min=1)
+    normalBreakTime = pyip.inputInt(prompt="Regular break time: ", min=1)
+    longBreakTime = pyip.inputInt(prompt="Long break time: ", min=1)
+    pomsToLongBreak = pyip.inputInt(prompt="Sessions to long break: ", min=1)
+    pomTarget = pyip.inputInt(prompt="Enter target number of poms (leave blank for no target): ", min=1, blank=True)
+
+
+#TODO check if any settings specified in the command line, eg for focus/break times
 if len(sys.argv) > 1:
     if sys.argv[1].isdecimal():
         pomsToLongBreak = int(sys.argv[1])
+    if len(sys.argv) > 2:
+        if sys.argv[2].isdecimal():
+            pomTarget = sys.argv[2]
 
+# TODO update saved settings if any given
+currentPomSettings = {
+    'focusTime': focusTime,
+    'normalBreakTime': normalBreakTime,
+    'longBreakTime': longBreakTime,
+    'pomsToLongBreak': pomsToLongBreak,
+    'pomTarget': pomTarget,
+    'date': str(datetime.datetime.today().strftime('%Y-%m-%d')),
+    'pomsCompleteToday': pomsCompleteToday
+}
+
+# check if run in test mode for short focus and break sessions for convenient testing
 testMode = False
-if len(sys.argv) > 2:
-    if sys.argv[2] == 't':
-        testMode = True
+if 'testm' in sys.argv:
+    testMode = True
 
 # if run in test mode, set focus time as 2 seconds, break time as 5 seconds
-if len(sys.argv) > 1:
-    if sys.argv[1] == 't' or testMode:
-        focusTime = 0
-        normalBreakTime = 0
-        longBreakTime = 0
-        testFocusTime = 2
-        testNormalBreakTime = 5
-        testLongBreakTime = 10
+if testMode:
+    focusTime = 0
+    normalBreakTime = 0
+    longBreakTime = 0
+    testFocusTime = 2
+    testNormalBreakTime = 5
+    testLongBreakTime = 10
 
 # get notification sound
 sound = os.listdir('useEndSound')[0]
@@ -46,8 +88,8 @@ if not p.exists():
     pomDataWriter.writerow(['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
     pomDataCSV.close()
 
-pomsComplete = 0 # number of pomodoros completed
 currentPom = 0 # number of the current pomodoro
+sessionPomsComplete = 0 # number of poms complete in current session
 
 # create list of dictionary to store the sessions data
 dataBuffer = []
@@ -65,7 +107,7 @@ print('  PomodomoData  '.center(85, '_'))
 print(f'\n')
 print(f'Ciao, world! Welcome to PomodomoData, a Pomodoro app.\n'.ljust(85, ' '))
 print('------'.center(85, ' ') + '\n')
-print(f'PomodomoData allows you to track your productivity, focus, mood and tiredness levels.\n'.ljust(85))
+print(f'PomodomoData allows you to track your productivity, focus, tiredness, and mood levels.\n'.ljust(85))
 print(f'''After each focus session enter: q to quit or s to skip break (optional)
 ... ### for focus, tired and mood levels (1-5)...
 ... and a comment on your pom session (optional).
@@ -100,11 +142,11 @@ try:
             time.sleep(1)
         # pom session complete, play notification sound
         wave_obj.play()
-        pomsComplete += 1
+        sessionPomsComplete += 1
 
         pomEndTime = datetime.datetime.now()
         currentPomData['pomEndDatetime'] = pomEndTime.strftime('%Y-%m-%d %H:%M:%S')
-        print(f"Pom #{pomsComplete} complete - {pomEndTime.strftime('%a, %d %b %Y: %H:%M:%S')} - {breakTime} minute break until {(pomEndTime + datetime.timedelta(minutes=breakTime, seconds=testBreakTime)).strftime('%H:%M:%S')}")
+        print(f"Pom #{sessionPomsComplete} complete - {pomEndTime.strftime('%a, %d %b %Y: %H:%M:%S')} - {breakTime} minute break until {(pomEndTime + datetime.timedelta(minutes=breakTime, seconds=testBreakTime)).strftime('%H:%M:%S')}")
         # get user reflection on session and choice to continue or quit
         userInput = ''
         while len(userInput.split(' ')) < 1 or userInput == '': 
@@ -164,6 +206,10 @@ except KeyboardInterrupt:
         pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
         for pom in dataBuffer:
             pomDictWriter.writerow(pom)
+    # TODO update previous session settings
+    with open('previousSessionSettings.py', 'w') as settingsFileObj:
+        settingsFileObj.write('prevPomSettings = ' + pprint.pformat(currentPomSettings))
+
     sys.exit(f"\nGood job! See you soon.")
 
 # save pom sessions data 
@@ -171,6 +217,8 @@ with open('myPomoData.csv', 'a') as pomDataCSV:
     pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
     for pom in dataBuffer:
         pomDictWriter.writerow(pom)
+
+# TODO update previous session settings
 
 
 print('Good job! See you soon.')
