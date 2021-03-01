@@ -3,11 +3,24 @@
 import time, datetime, sys, csv, os, pprint
 from pathlib import Path
 import simpleaudio
-from previousSessionSettings import prevPomSettings
 import pyinputplus as pyip
+# from pomSettings import prevPomSettings, defaultSettings, focusAreas
+import shelve
 
-# TODO: check if run in default mode with the below default settings, eg. -d in command line
-#  default settings
+# get settings from user input function
+def setSettings():
+    print('Enter your preferred settings (focus and break times in minutes)')
+    focusTime = pyip.inputInt(prompt="Focus time: ", min=1)
+    normalBreakTime = pyip.inputInt(prompt="Regular break time: ", min=1)
+    longBreakTime = pyip.inputInt(prompt="Long break time: ", min=1)
+    pomsToLongBreak = pyip.inputInt(prompt="Sessions to long break: ", min=1)
+    pomTarget = pyip.inputInt(prompt="Enter target number of poms (leave blank for no target): ", min=1, blank=True)
+    if pomTarget == '':
+        pomTarget = None
+
+firstTime = False
+
+#  initial settings
 focusTime = 25
 normalBreakTime = 5
 longBreakTime = 25
@@ -18,41 +31,79 @@ pomsToLongBreak = 6 # number of poms between long breaks is 6 by default
 pomTarget = None # target number of pomodors for the day
 pomsCompleteToday = 0 # total complete on day program runs, including previous sessions that day
 
-# get previous sessions settings if no settings given in command line and not run in default mode
-focusTime = prevPomSettings['focusTime']
-normalBreakTime = prevPomSettings['normalBreakTime']
-longBreakTime = prevPomSettings['longBreakTime']
-pomsToLongBreak = prevPomSettings['pomsToLongBreak']
-pomTarget = prevPomSettings['pomTarget']
-sessionDate = prevPomSettings['date']
-pomsCompleteToday = prevPomSettings['pomsCompleteToday']
-# if previous session was on an earlier date, reset pomsCompleteToday
-if sessionDate != str(datetime.datetime.today().strftime('%Y-%m-%d')):
-    pomsCompleteToday = 0
+# check if run in default mode with the below default settings, eg. -d in command line
+if '-d' in sys.argv:
+    #  default settings
+    try:
+        with shelve.open('pomSettings') as db:
+            focusTime = db['defaultSettings']['focusTime']
+            normalBreakTime = db['defaultSettings']['normalBreakTime']
+            longBreakTime = db['defaultSettings']['longBreakTime']
+            pomsToLongBreak = db['defaultSettings']['pomsToLongBreak']
+            pomTarget = db['defaultSettings']['pomTarget']
+    except KeyError:
+        firstTime = True
+# otherwise,get previous sessions settings and info if no settings given in command line and not run in default mode
+else:
+    try:
+        with shelve.open('pomSettings') as db:
+            focusTime = db['prevPomSettings']['focusTime']
+            normalBreakTime = db['prevPomSettings']['normalBreakTime']
+            longBreakTime = db['prevPomSettings']['longBreakTime']
+            pomsToLongBreak = db['prevPomSettings']['pomsToLongBreak']
+            pomTarget = db['prevPomSettings']['pomTarget']
+            prevSessionDate = db['prevPomSettings']['date']
+            pomsCompleteToday = db['prevPomSettings']['pomsCompleteToday']
+            # if previous session was on an earlier date, reset pomsCompleteToday
+            if prevSessionDate != str(datetime.datetime.today().strftime('%Y-%m-%d')):
+                pomsCompleteToday = 0
+    except KeyError:
+        firstTime = True
 
-# add an options mode, -o, where user can respond to prompts to enter settings
+# if the very first time, use inital settings and set defaults
+if firstTime:
+    with shelve.open('pomSettings') as db:
+        defaultSettings = {'focusTime': focusTime,
+                            'normalBreakTime': normalBreakTime,
+                            'longBreakTime': longBreakTime,
+                            'pomsToLongBreak': pomsToLongBreak,
+                            'pomTarget': pomTarget}
+        db['defaultSettings'] = defaultSettings
+
+# if run in configurations mode, -c, user can update the default settings and enter focus themes, eg. coding, mathClass, homework, work
+focusArea = ''
+if '-c' in sys.argv:
+    updateWhat = pyip.inputMenu(['Default settings', 'Focus areas', 'Both'], prompt="What would you like to update? ", numbered=True)
+    if updateWhat == 'Default settings':
+        setSettings()
+        # TODO update defalut settings with shelve
+    elif updateWhat == 'Focus areas':
+        focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
+        # TODO update focus areas with shelve
+    else:
+        setSettings()
+        focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
+        # TODO update both with shelve
+    
+
+# TODO consider when/whether to ask this: focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
+
+# if run in options mode, -o, user can respond to prompts to enter settings
 if '-o' in sys.argv:
-    print('Enter your preferred settings (focus and break times in minutes)')
-    focusTime = pyip.inputInt(prompt="Focus time: ", min=1)
-    normalBreakTime = pyip.inputInt(prompt="Regular break time: ", min=1)
-    longBreakTime = pyip.inputInt(prompt="Long break time: ", min=1)
-    pomsToLongBreak = pyip.inputInt(prompt="Sessions to long break: ", min=1)
-    pomTarget = pyip.inputInt(prompt="Enter target number of poms (leave blank for no target): ", min=1, blank=True)
-    if pomTarget == '':
-        pomTarget = None
+    setSettings()
+    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
 
 if pomTarget != None:
     pomsTilTarget = pomTarget - pomsCompleteToday
 
 
-#TODO check if any settings specified in the command line, eg for focus/break times
+#TODO check if any settings specified in the command line, eg for focus/break times, and update shelf if needed
 if len(sys.argv) > 1:
     if sys.argv[1].isdecimal():
         pomsToLongBreak = int(sys.argv[1])
     if len(sys.argv) > 2:
         if sys.argv[2].isdecimal():
             pomTarget = sys.argv[2]
-
 # TODO update saved settings if any given
 currentPomSettings = {
     'focusTime': focusTime,
@@ -134,7 +185,7 @@ try:
         pomStartTime = datetime.datetime.now()
         currentPomData={'pomSession':currentPom}
         currentPomData['pomStartDatetime'] = pomStartTime.strftime('%Y-%m-%d %H:%M:%S')
-        print(f"Pom start time: {pomStartTime.strftime('%a, %d %b %Y: %H:%M:%S')}  ".ljust(40, '.') +  f"  Focus until: {(pomStartTime + datetime.timedelta(minutes=focusTime, seconds=testFocusTime)).strftime('%H:%M:%S')}".rjust(40, '.'))
+        print(f"Pom start time: {pomStartTime.strftime('%a, %d %b %Y: %H:%M:%S')}  ".ljust(44, '.') +  f"  Focus until: {(pomStartTime + datetime.timedelta(minutes=focusTime, seconds=testFocusTime)).strftime('%H:%M:%S')}".rjust(36, '.'))
         print(f'Current pom: {currentPom}\n')
         
         # set break time depending on if long break or regular
@@ -152,7 +203,8 @@ try:
         wave_obj.play()
         sessionPomsComplete += 1
         pomsCompleteToday += 1
-        pomsTilTarget -= 1
+        if pomTarget != None:
+            pomsTilTarget -= 1
 
         pomEndTime = datetime.datetime.now()
         currentPomData['pomEndDatetime'] = pomEndTime.strftime('%Y-%m-%d %H:%M:%S')
@@ -224,11 +276,12 @@ except KeyboardInterrupt:
         pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
         for pom in dataBuffer:
             pomDictWriter.writerow(pom)
-    # update previous session settings
-    with open('previousSessionSettings.py', 'w') as settingsFileObj:
-        settingsFileObj.write('prevPomSettings = ' + pprint.pformat(currentPomSettings))
-
     sys.exit(f"\nGood job! See you soon.")
+    # TODO update previous session settings - MOVE SYS.EXIT BELOW
+"""    with open('previousSessionSettings.py', 'w') as settingsFileObj:
+        settingsFileObj.write('prevPomSettings = ' + pprint.pformat(currentPomSettings)) # TODO do this with shelve"""
+
+    
 
 # save pom sessions data 
 with open('myPomoData.csv', 'a') as pomDataCSV:
@@ -236,9 +289,9 @@ with open('myPomoData.csv', 'a') as pomDataCSV:
     for pom in dataBuffer:
         pomDictWriter.writerow(pom)
 
-# update previous session settings
-with open('previousSessionSettings.py', 'w') as settingsFileObj:
-    settingsFileObj.write('prevPomSettings = ' + pprint.pformat(currentPomSettings))
+# TODO update previous session settings
+"""with open('previousSessionSettings.py', 'w') as settingsFileObj:
+    settingsFileObj.write('prevPomSettings = ' + pprint.pformat(currentPomSettings)) # TODO do this with shelve"""
 
 
 print('Good job! See you soon.')
