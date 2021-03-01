@@ -61,7 +61,8 @@ else:
         firstTime = True
 
 # if the very first time, use inital settings and set defaults
-if firstTime: # TODO add -c to sys.argv to run configurations
+if firstTime: 
+    sys.argv.append('-c') # add -c to sys.argv to run configurations if run for first time
     with shelve.open('pomSettings') as db:
         defaultSettings = {'focusTime': focusTime,
                             'normalBreakTime': normalBreakTime,
@@ -73,7 +74,9 @@ if firstTime: # TODO add -c to sys.argv to run configurations
 # if run in configurations mode, -c, user can update the default settings and enter focus themes, eg. coding, mathClass, homework, work
 if '-c' in sys.argv:
     defaultSettings = {} # TODO only ask update what if not first time
-    updateWhat = pyip.inputMenu(['Default settings', 'Focus areas', 'Both'], prompt="What would you like to update? \n", numbered=True)
+    updateWhat = ''
+    if not firstTime:
+        updateWhat = pyip.inputMenu(['Default settings', 'Focus areas', 'Both'], prompt="What would you like to update? \n", numbered=True)
     if updateWhat.lower() == 'default settings':
         focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
         # update default settings with shelve
@@ -100,7 +103,7 @@ if '-c' in sys.argv:
                         else:
                             resultFocusAreas.append(area)
                     while True:
-                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?  ").lower()
                         if correct in ['y', 'yes', 'n', 'no']:
                             break
                         else:
@@ -112,13 +115,13 @@ if '-c' in sys.argv:
                     listUpdateFocusAreas = stringUpdateFocusAreas.split(', ')
                     resultFocusAreas = listUpdateFocusAreas
                     while True:
-                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?  ").lower()
                         if correct in ['y', 'yes', 'n', 'no']:
                             break
                         else:
                             print('please enter y or yes or n or no')
                 db['focusAreas'] = resultFocusAreas
-    else: # update both or first time # TODO add first time condition here
+    else: # if update both selected, or it is the first time 
         focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
         defaultSettings = {'focusTime': focusTime,
                             'normalBreakTime': normalBreakTime,
@@ -129,12 +132,17 @@ if '-c' in sys.argv:
         # update both with shelve
         with shelve.open('pomSettings') as db:
             db['defaultSettings'] = defaultSettings
+            correct = '' 
             try: # try in case of first time running or no focus areas existing yet
                 while correct not in ['y', 'yes']:
                     focusAreas = db['focusAreas']
                     resultFocusAreas = list(focusAreas)
                     print(f"You're current focus themes are {', '.join(resultFocusAreas)}")
-                    stringUpdateFocusAreas = input('Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n')
+                    if firstTime:
+                        prompt = 'Enter focus themes, separated by commas:\n'
+                    else:
+                        prompt = 'Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n'
+                    stringUpdateFocusAreas = input(prompt)
                     listUpdateFocusAreas = stringUpdateFocusAreas.split(', ')
                     for area in listUpdateFocusAreas:
                         if area in resultFocusAreas:
@@ -142,7 +150,7 @@ if '-c' in sys.argv:
                         else:
                             resultFocusAreas.append(area)
                     while True:
-                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?  ").lower()
                         if correct in ['y', 'yes', 'n', 'no']:
                             break
                         else:
@@ -154,7 +162,7 @@ if '-c' in sys.argv:
                     listUpdateFocusAreas = stringUpdateFocusAreas.split(', ')
                     resultFocusAreas = listUpdateFocusAreas
                     while True:
-                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?  ").lower()
                         if correct in ['y', 'yes', 'n', 'no']:
                             break
                         else:
