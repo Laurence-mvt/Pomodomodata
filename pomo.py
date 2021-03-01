@@ -1,6 +1,6 @@
-# pomo.py - Pomodomodata: a super-simple, textual pomodoro app that records usage data to enable time tracking
+# pomo.py - Pomodomodata: a textual pomodoro app that records usage data to enable time tracking
 
-import time, datetime, sys, csv, os, pprint
+import time, datetime, sys, csv, os
 from pathlib import Path
 import simpleaudio
 import pyinputplus as pyip
@@ -61,7 +61,7 @@ else:
         firstTime = True
 
 # if the very first time, use inital settings and set defaults
-if firstTime:
+if firstTime: # TODO add -c to sys.argv to run configurations
     with shelve.open('pomSettings') as db:
         defaultSettings = {'focusTime': focusTime,
                             'normalBreakTime': normalBreakTime,
@@ -71,11 +71,10 @@ if firstTime:
         db['defaultSettings'] = defaultSettings
 
 # if run in configurations mode, -c, user can update the default settings and enter focus themes, eg. coding, mathClass, homework, work
-focusArea = ''
 if '-c' in sys.argv:
-    defaultSettings = {}
+    defaultSettings = {} # TODO only ask update what if not first time
     updateWhat = pyip.inputMenu(['Default settings', 'Focus areas', 'Both'], prompt="What would you like to update? \n", numbered=True)
-    if updateWhat == 'Default settings':
+    if updateWhat.lower() == 'default settings':
         focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
         # update default settings with shelve
         defaultSettings = {'focusTime': focusTime,
@@ -85,11 +84,41 @@ if '-c' in sys.argv:
                             'pomTarget': pomTarget}
         with shelve.open('pomSettings') as db:
             db['defaultSettings'] = defaultSettings
-    elif updateWhat == 'Focus areas':
-        pass
-        #focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
-        # TODO update focus areas with shelve
-    else:
+    elif updateWhat.lower() == 'focus areas':
+        correct = ''    
+        with shelve.open('pomSettings') as db:
+            try: # try in case of first time running or no focus areas existing yet
+                while correct not in ['y', 'yes']:
+                    focusAreas = db['focusAreas']
+                    resultFocusAreas = list(focusAreas)
+                    print(f"You're current focus themes are {', '.join(resultFocusAreas)}")
+                    stringUpdateFocusAreas = input('Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n')
+                    listUpdateFocusAreas = stringUpdateFocusAreas.split(', ')
+                    for area in listUpdateFocusAreas:
+                        if area in resultFocusAreas:
+                            resultFocusAreas.remove(area)
+                        else:
+                            resultFocusAreas.append(area)
+                    while True:
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        if correct in ['y', 'yes', 'n', 'no']:
+                            break
+                        else:
+                            print('please enter y or yes or n or no')
+                db['focusAreas'] = resultFocusAreas
+            except KeyError: # if no focus areas exist yet
+                while correct not in ['y', 'yes']:
+                    stringUpdateFocusAreas = input('Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n')
+                    listUpdateFocusAreas = stringUpdateFocusAreas.split(', ')
+                    resultFocusAreas = listUpdateFocusAreas
+                    while True:
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        if correct in ['y', 'yes', 'n', 'no']:
+                            break
+                        else:
+                            print('please enter y or yes or n or no')
+                db['focusAreas'] = resultFocusAreas
+    else: # update both or first time # TODO add first time condition here
         focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
         defaultSettings = {'focusTime': focusTime,
                             'normalBreakTime': normalBreakTime,
@@ -97,15 +126,44 @@ if '-c' in sys.argv:
                             'pomsToLongBreak': pomsToLongBreak,
                             'pomTarget': pomTarget}
         print('\n')
-        # focusAreas = 'pass' # TODO
-        # focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
-        # TODO update both with shelve
+        # update both with shelve
         with shelve.open('pomSettings') as db:
             db['defaultSettings'] = defaultSettings
-            # TODO save focusAreas
+            try: # try in case of first time running or no focus areas existing yet
+                while correct not in ['y', 'yes']:
+                    focusAreas = db['focusAreas']
+                    resultFocusAreas = list(focusAreas)
+                    print(f"You're current focus themes are {', '.join(resultFocusAreas)}")
+                    stringUpdateFocusAreas = input('Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n')
+                    listUpdateFocusAreas = stringUpdateFocusAreas.split(', ')
+                    for area in listUpdateFocusAreas:
+                        if area in resultFocusAreas:
+                            resultFocusAreas.remove(area)
+                        else:
+                            resultFocusAreas.append(area)
+                    while True:
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        if correct in ['y', 'yes', 'n', 'no']:
+                            break
+                        else:
+                            print('please enter y or yes or n or no')
+                db['focusAreas'] = resultFocusAreas
+            except KeyError: # if no focus areas exist yet
+                while correct not in ['y', 'yes']:
+                    stringUpdateFocusAreas = input('Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n')
+                    listUpdateFocusAreas = stringUpdateFocusAreas.split(', ')
+                    resultFocusAreas = listUpdateFocusAreas
+                    while True:
+                        correct = input(f"Your new focus themes will be: {', '.join(resultFocusAreas)}\nIs that correct?").lower()
+                        if correct in ['y', 'yes', 'n', 'no']:
+                            break
+                        else:
+                            print('please enter y or yes or n or no')
+                db['focusAreas'] = resultFocusAreas
     
 
 # TODO consider when/whether to ask this: focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
+# focusArea = ''
 
 # if run in options mode, -o, user can respond to prompts to enter settings
 if '-o' in sys.argv:
