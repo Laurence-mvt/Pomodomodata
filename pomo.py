@@ -60,7 +60,7 @@ else:
     except KeyError:
         firstTime = True
 
-# if the very first time, use inital settings and set defaults
+# if the very first time running the program, use inital settings and set defaults
 if firstTime: 
     sys.argv.append('-c') # add -c to sys.argv to run configurations if run for first time
     with shelve.open('pomSettings') as db:
@@ -73,7 +73,7 @@ if firstTime:
 
 # if run in configurations mode, -c, user can update the default settings and enter focus themes, eg. coding, mathClass, homework, work
 if '-c' in sys.argv:
-    defaultSettings = {} # TODO only ask update what if not first time
+    defaultSettings = {} # only ask update what if not first time
     updateWhat = ''
     if not firstTime:
         updateWhat = pyip.inputMenu(['Default settings', 'Focus areas', 'Both'], prompt="What would you like to update? \n", numbered=True)
@@ -170,26 +170,53 @@ if '-c' in sys.argv:
                 db['focusAreas'] = resultFocusAreas
     
 
-# TODO consider when/whether to ask this: focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
+# TODO consider when/where/whether to ask this: focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
 # focusArea = ''
+
+# check if any settings specified in the command line, eg for focus/break times, and update shelf if needed
+try:
+    if len(sys.argv) > 1:
+        if sys.argv[1].isdecimal():
+            focusTime = int(sys.argv[1])                    # SET FOCUS TIME
+        else:
+            raise Exception
+        if len(sys.argv) > 2:
+            if sys.argv[2].isdecimal():
+                normalBreakTime = sys.argv[2]               # SET BREAK TIME
+            else:
+                raise Exception
+            if len(sys.argv) > 3:
+                if sys.argv[2].isdecimal():
+                    longBreakTime = sys.argv[2]             # SET LONG BREAK TIME
+                else:
+                    raise Exception
+                if len(sys.argv) > 4:
+                    if sys.argv[2].isdecimal():
+                        pomsToLongBreak = sys.argv[2]       # SET POMS TO LONG BREAK
+                    else:
+                        raise Exception
+                    if len(sys.argv) > 5:
+                        if sys.argv[2].isdecimal():
+                            pomTarget = sys.argv[2]         # SET POM TARGET
+                        else:
+                            raise Exception
+except Exception:
+    print('Must enter digits for configurations. opening -o options mode')
+    sys.argv.append('-o')
+
+# TODO: set focus area if focus area entered in command line
 
 # if run in options mode, -o, user can respond to prompts to enter settings
 if '-o' in sys.argv:
     focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
-    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
+    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)", numbered=True, blank=True)
+    if focusArea == '':
+        focusArea = None
 
 if pomTarget != None:
     pomsTilTarget = pomTarget - pomsCompleteToday
-
-
-#TODO check if any settings specified in the command line, eg for focus/break times, and update shelf if needed
-if len(sys.argv) > 1:
-    if sys.argv[1].isdecimal():
-        pomsToLongBreak = int(sys.argv[1])
-    if len(sys.argv) > 2:
-        if sys.argv[2].isdecimal():
-            pomTarget = sys.argv[2]
-# TODO update saved settings if any given
+        
+# update saved settings if any given
 currentPomSettings = {
     'focusTime': focusTime,
     'normalBreakTime': normalBreakTime,
