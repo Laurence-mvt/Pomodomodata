@@ -30,6 +30,8 @@ testLongBreakTime = 0
 pomsToLongBreak = 6 # number of poms between long breaks is 6 by default
 pomTarget = None # target number of pomodors for the day
 pomsCompleteToday = 0 # total complete on day program runs, including previous sessions that day
+focusAreas = None
+focusArea = 'placeholder'
 
 # check if run in default mode with the below default settings, eg. -d in command line
 if '-d' in sys.argv:
@@ -41,6 +43,7 @@ if '-d' in sys.argv:
             longBreakTime = db['defaultSettings']['longBreakTime']
             pomsToLongBreak = db['defaultSettings']['pomsToLongBreak']
             pomTarget = db['defaultSettings']['pomTarget']
+            focusAreas = db['focusAreas']
     except KeyError:
         firstTime = True
 # otherwise,get previous sessions settings and info if no settings given in command line and not run in default mode
@@ -171,11 +174,8 @@ if '-c' in sys.argv:
                         else:
                             print('please enter y or yes or n or no')
                 db['focusAreas'] = resultFocusAreas
+            focusAreas=db['focusAreas']
     
-
-# TODO consider when/where/whether to ask this: focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today?", numbered=True)
-# focusArea = ''
-
 # check if any settings specified in the command line, eg for focus/break times, and update shelf if needed
 try:
     if len(sys.argv) > 1 and not sys.argv[1] in ['-d', '-c', '-o']: # TODO check that also not a focus area
@@ -292,8 +292,14 @@ Press ctrl-C to save your progress and quit the app at any time.\n''')
 print('------'.center(80, ' ') + '\n')
 
 # -------------------POMODOROS START HERE ON USER INPUT----------------
-# start pomodoros on user input
-input('Press enter to begin first pomodoro.')
+# start pomodoros on user input (prompt depends on if first time)
+if focusAreas != None and focusArea != None: # if user has some focus areas existing and focusArea not skipped in options mode
+    print('Select a focus area or press enter to start first pomodoro:\n')
+    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)", numbered=True, blank=True)
+    print()
+else:
+    print(focusAreas, focusArea)
+    input('Press enter to start first pomodoro')
 try:
     while True:
         currentPom += 1
@@ -392,14 +398,14 @@ except KeyboardInterrupt:
         pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
         for pom in dataBuffer:
             pomDictWriter.writerow(pom)
-    # update previous session settings - MOVE SYS.EXIT BELOW
+    # update previous session settings 
     with shelve.open('pomSettings') as db:
         prevPomSettings = currentPomSettings
         db['prevPomSettings'] = prevPomSettings
     sys.exit(f"\nGood job! See you soon.")
 
 # save pom sessions data 
-with open('myPomoData.csv', 'a') as pomDataCSV:
+with open('myPomoData.csv', 'a') as pomDataCSV: # TODO add focusAreas to csv
     pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
     for pom in dataBuffer:
         pomDictWriter.writerow(pom)
@@ -407,6 +413,6 @@ with open('myPomoData.csv', 'a') as pomDataCSV:
 # update previous session settings
 with shelve.open('pomSettings') as db:
         prevPomSettings = currentPomSettings
-        db['prevPomSettings'] = prevPomSettings
+        db['prevPomSettings'] = prevPomSettings 
 
 print('Good job! See you soon.')
