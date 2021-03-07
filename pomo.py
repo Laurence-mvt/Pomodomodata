@@ -7,7 +7,7 @@ import pyinputplus as pyip
 import shelve
 
 def setSettings():
-    # gets settings from user input function
+    """ Get settings from user input. """
     print('Enter your preferred settings (focus and break times in minutes)')
     focusTime = pyip.inputInt(prompt="Focus time: ", min=1)
     normalBreakTime = pyip.inputInt(prompt="Regular break time: ", min=1)
@@ -54,6 +54,8 @@ else:
             pomTarget = db['prevPomSettings']['pomTarget']
             prevSessionDate = db['prevPomSettings']['date']
             pomsCompleteToday = db['prevPomSettings']['pomsCompleteToday']
+            # load focus areas in case run in options mode TODO: or with focus area given
+            focusAreas = db['focusAreas']
             # if previous session was on an earlier date, reset pomsCompleteToday
             if prevSessionDate != str(datetime.datetime.today().strftime('%Y-%m-%d')):
                 pomsCompleteToday = 0
@@ -73,8 +75,9 @@ if firstTime:
 
 # if run in configurations mode, -c, user can update the default settings and enter focus themes, eg. coding, mathClass, homework, work
 if '-c' in sys.argv:
-    defaultSettings = {} # only ask update what if not first time
+    defaultSettings = {} 
     updateWhat = ''
+    # only ask what to update if not first time
     if not firstTime:
         updateWhat = pyip.inputMenu(['Default settings', 'Focus areas', 'Both'], prompt="What would you like to update? \n", numbered=True)
     if updateWhat.lower() == 'default settings':
@@ -175,7 +178,7 @@ if '-c' in sys.argv:
 
 # check if any settings specified in the command line, eg for focus/break times, and update shelf if needed
 try:
-    if len(sys.argv) > 1:
+    if len(sys.argv) > 1 and not sys.argv[1] in ['-d', '-c', '-o']: # TODO check that also not a focus area
         if sys.argv[1].isdecimal():
             focusTime = int(sys.argv[1])                    # SET FOCUS TIME
         else:
@@ -209,7 +212,7 @@ except Exception:
 # if run in options mode, -o, user can respond to prompts to enter settings
 if '-o' in sys.argv:
     focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
-    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)", numbered=True, blank=True)
+    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)\n", numbered=True, blank=True)
     if focusArea == '':
         focusArea = None
 
