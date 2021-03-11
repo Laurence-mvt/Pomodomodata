@@ -18,7 +18,9 @@ def setSettings():
         pomTarget = None
     return focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget
 
+# Monitor if it is the first time running the program, and if the user has set a focus area to work on
 firstTime = False
+focusAreaSetOrSkipped = False
 
 #  initial settings
 focusTime = 25
@@ -31,7 +33,7 @@ pomsToLongBreak = 6 # number of poms between long breaks is 6 by default
 pomTarget = None # target number of pomodors for the day
 pomsCompleteToday = 0 # total complete on day program runs, including previous sessions that day
 focusAreas = None
-focusArea = 'placeholder'
+focusArea = None
 
 # check if run in default mode with the below default settings, eg. -d in command line
 if '-d' in sys.argv:
@@ -57,7 +59,7 @@ else:
             pomTarget = db['prevPomSettings']['pomTarget']
             prevSessionDate = db['prevPomSettings']['date']
             pomsCompleteToday = db['prevPomSettings']['pomsCompleteToday']
-            # load focus areas in case run in options mode TODO: or with focus area given
+            # load focus areas in case run in options mode
             focusAreas = db['focusAreas']
             # if previous session was on an earlier date, reset pomsCompleteToday
             if prevSessionDate != str(datetime.datetime.today().strftime('%Y-%m-%d')):
@@ -115,6 +117,7 @@ if '-c' in sys.argv:
                         else:
                             print('please enter y or yes or n or no')
                 db['focusAreas'] = resultFocusAreas
+                focusAreas = db['focusAreas']
             except KeyError: # if no focus areas exist yet
                 while correct not in ['y', 'yes']:
                     stringUpdateFocusAreas = input('Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n')
@@ -127,6 +130,7 @@ if '-c' in sys.argv:
                         else:
                             print('please enter y or yes or n or no')
                 db['focusAreas'] = resultFocusAreas
+                focusAreas = db['focusAreas']
     else: # if update both selected, or it is the first time 
         focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
         defaultSettings = {'focusTime': focusTime,
@@ -162,6 +166,7 @@ if '-c' in sys.argv:
                         else:
                             print('please enter y or yes or n or no')
                 db['focusAreas'] = resultFocusAreas
+                focusAreas = db['focusAreas']
             except KeyError: # if no focus areas exist yet
                 while correct not in ['y', 'yes']:
                     stringUpdateFocusAreas = input('Enter additional focus themes to add, and enter existing themes to remove, separated by commas:\n')
@@ -174,8 +179,18 @@ if '-c' in sys.argv:
                         else:
                             print('please enter y or yes or n or no')
                 db['focusAreas'] = resultFocusAreas
-            focusAreas=db['focusAreas']
+                focusAreas = db['focusAreas']
     
+# set focus area if focus area entered in command line
+for arg in sys.argv:
+    if focusAreas != None:    # in case first time running the program and user not setting focus areas
+        # If focus area entered in command line, set to that focus area
+        if arg in focusAreas:
+            focusArea = arg
+            focusAreaSetOrSkipped = True
+            # Then remove that argument from the list of arguments, to next check the rest are numbers
+            sys.argv.remove(arg) 
+
 # check if any settings specified in the command line, eg for focus/break times, and update shelf if needed
 try:
     if len(sys.argv) > 1 and not sys.argv[1] in ['-d', '-c', '-o']: # TODO check that also not a focus area
@@ -207,14 +222,13 @@ except Exception:
     print('Must enter digits for configurations. opening -o options mode')
     sys.argv.append('-o')
 
-# TODO: set focus area if focus area entered in command line
-
 # if run in options mode, -o, user can respond to prompts to enter settings
 if '-o' in sys.argv:
     focusTime, normalBreakTime, longBreakTime, pomsToLongBreak, pomTarget = setSettings()
     focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)\n", numbered=True, blank=True)
     if focusArea == '':
         focusArea = None
+    focusAreaSetOrSkipped = True
 
 if pomTarget != None:
     pomsTilTarget = pomTarget - pomsCompleteToday
@@ -292,13 +306,17 @@ Press ctrl-C to save your progress and quit the app at any time.\n''')
 print('------'.center(80, ' ') + '\n')
 
 # -------------------POMODOROS START HERE ON USER INPUT----------------
-# start pomodoros on user input (prompt depends on if first time)
-if focusAreas != None and focusArea != None: # if user has some focus areas existing and focusArea not skipped in options mode
+# Start pomodoros on user input (prompt depends on if first time)
+if focusAreaSetOrSkipped == True:
+    input('Press enter to start first pomodoro')
+# If user has some focus areas existing
+elif focusAreas != None: 
+    print('focus area is', focusArea)
     print('Select a focus area or press enter to start first pomodoro:\n')
-    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)", numbered=True, blank=True)
+    focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)\n", numbered=True, blank=True)
     print()
+# Otherwise, start on input
 else:
-    print(focusAreas, focusArea)
     input('Press enter to start first pomodoro')
 try:
     while True:
