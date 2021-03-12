@@ -193,7 +193,7 @@ for arg in sys.argv:
 
 # check if any settings specified in the command line, eg for focus/break times, and update shelf if needed
 try:
-    if len(sys.argv) > 1 and not sys.argv[1] in ['-d', '-c', '-o']: # TODO check that also not a focus area
+    if len(sys.argv) > 1 and not sys.argv[1] in ['-d', '-c', '-o']:
         if sys.argv[1].isdecimal():
             focusTime = int(sys.argv[1])                    # SET FOCUS TIME
         else:
@@ -273,7 +273,7 @@ if not p.exists():
     pomDataCSV = open('myPomoData.csv', 'w')
     pomDataWriter = csv.writer(pomDataCSV)
     # add headers to csv
-    pomDataWriter.writerow(['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
+    pomDataWriter.writerow(['pomSession','pomStartDatetime', 'pomEndDatetime', 'focusArea', 'pomTarget', 'focus', 'tired', 'mood', 'comment'])
     pomDataCSV.close()
 
 currentPom = 0 # number of the current pomodoro
@@ -324,6 +324,8 @@ try:
         pomStartTime = datetime.datetime.now()
         currentPomData={'pomSession':currentPom}
         currentPomData['pomStartDatetime'] = pomStartTime.strftime('%Y-%m-%d %H:%M:%S')
+        currentPomData['focusArea'] = focusArea
+        currentPomData['pomTarget'] = pomTarget
         print(f"Pom start time: {pomStartTime.strftime('%a, %d %b %Y: %H:%M:%S')}  ".ljust(44, '.') +  f"  Focus until: {(pomStartTime + datetime.timedelta(minutes=focusTime, seconds=testFocusTime)).strftime('%H:%M:%S')}".rjust(36, '.'))
         print(f'Current pom: {currentPom}\n')
         
@@ -413,7 +415,7 @@ try:
 # if user interupts to quit, save data before quitting
 except KeyboardInterrupt:
     with open('myPomoData.csv', 'a') as pomDataCSV:
-        pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
+        pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focusArea', 'pomTarget', 'focus', 'tired', 'mood', 'comment'])
         for pom in dataBuffer:
             pomDictWriter.writerow(pom)
     # update previous session settings 
@@ -423,8 +425,8 @@ except KeyboardInterrupt:
     sys.exit(f"\nGood job! See you soon.")
 
 # save pom sessions data 
-with open('myPomoData.csv', 'a') as pomDataCSV: # TODO add focusAreas to csv
-    pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focus', 'tired', 'mood', 'comment'])
+with open('myPomoData.csv', 'a') as pomDataCSV:
+    pomDictWriter = csv.DictWriter(pomDataCSV, fieldnames=['pomSession','pomStartDatetime', 'pomEndDatetime', 'focusArea', 'pomTarget', 'focus', 'tired', 'mood', 'comment'])
     for pom in dataBuffer:
         pomDictWriter.writerow(pom)
 
