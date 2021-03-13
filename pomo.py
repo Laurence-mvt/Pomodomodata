@@ -310,8 +310,7 @@ print('------'.center(80, ' ') + '\n')
 if focusAreaSetOrSkipped == True:
     input('Press enter to start first pomodoro')
 # If user has some focus areas existing
-elif focusAreas != None: 
-    print('focus area is', focusArea)
+elif focusAreas != None:
     print('Select a focus area or press enter to start first pomodoro:\n')
     focusArea = pyip.inputMenu(focusAreas, prompt="What are you working on today? (enter to skip)\n", numbered=True, blank=True)
     print()
